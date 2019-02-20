@@ -10,10 +10,10 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <org.jooq.version>3.11.7</org.jooq.version>
-        <db.url>jdbc:h2:~/mcve</db.url>
-        <db.username>sa</db.username>
-        <db.password></db.password>
+        <org.jooq.version>3.11.9</org.jooq.version>
+        <db.url>jdbc:postgresql:mcve</db.url>
+        <db.username>mcve</db.username>
+        <db.password>mcve</db.password>
     </properties>
 
     <dependencies>
@@ -25,9 +25,9 @@
             <version>${org.jooq.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <version>1.4.197</version>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.2.5</version>
         </dependency>
 
         <!-- Logging -->
@@ -47,14 +47,14 @@
     </dependencies>
 
     <build>
+        <sourceDirectory>src/main/jooq</sourceDirectory>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.0</version>
                 <configuration>
-                    <source>10</source>
-                    <target>10</target>
+                    <release>11</release>
                 </configuration>
             </plugin>
 
@@ -64,7 +64,7 @@
                 <version>5.2.1</version>
                 <executions>
                     <execution>
-                        <phase>generate-sources</phase>
+                        <phase>process-resources</phase>
                         <goals>
                             <goal>migrate</goal>
                         </goals>
@@ -78,43 +78,6 @@
                         <location>filesystem:src/main/resources/db/migration</location>
                     </locations>
                 </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.jooq</groupId>
-                <artifactId>jooq-codegen-maven</artifactId>
-                <version>${org.jooq.version}</version>
-
-                <executions>
-                    <execution>
-                        <id>java-generator</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-
-                        <configuration>
-                            <jdbc>
-                                <url>${db.url}</url>
-                                <user>${db.username}</user>
-                                <password>${db.password}</password>
-                            </jdbc>
-                            <generator>
-                                <database>
-                                    <includes>.*</includes>
-                                    <inputSchema>MCVE</inputSchema>
-                                </database>
-                                <generate>
-                                    <generatedAnnotation>false</generatedAnnotation>
-                                </generate>
-                                <target>
-                                    <packageName>org.jooq.mcve</packageName>
-                                    <directory>target/generated-sources/jooq-mcve</directory>
-                                </target>
-                            </generator>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>

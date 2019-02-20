@@ -1,0 +1,23 @@
+<configuration>
+  <jdbc>
+    <driver>org.postgresql.Driver</driver>
+    <url>jdbc:postgresql:mcve</url>
+    <user>mcve</user>
+    <password>mcve</password>
+  </jdbc>
+  <generator>
+    <database>
+      <name>org.jooq.meta.postgres.PostgresDatabase</name>
+      <inputSchema>mcve</inputSchema>
+      <excludes>flyway_schema_history</excludes>
+    </database>
+    <generate>
+      <generatedAnnotation>false</generatedAnnotation>
+    </generate>
+    <target>
+      <packageName>org.jooq.mcve</packageName>
+      <directory>${outputdir}</directory>
+      <encoding>UTF-8</encoding>
+    </target>
+  </generator>
+</configuration>

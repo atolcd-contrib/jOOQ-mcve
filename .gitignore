@@ -1,5 +1,5 @@
-/.classpath
-/.project
-/.settings
-/target
-/*.iml
+# Maven
+/target/
+# Gradle
+/.gradle/
+/build/

@@ -38,27 +38,28 @@
 package org.jooq.mcve.test;
 
 import static org.jooq.mcve.Tables.TEST;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertArrayEquals;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-
+import java.util.stream.Stream;
 import org.jooq.DSLContext;
+import org.jooq.EnumType;
 import org.jooq.impl.DSL;
-import org.jooq.mcve.tables.records.TestRecord;
-
+import org.jooq.mcve.enums.TestEnum;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 public class MCVETest {
 
+    private static final int ID = 42;
     Connection connection;
     DSLContext ctx;
 
     @Before
     public void setup() throws Exception {
-        connection = DriverManager.getConnection("jdbc:h2:~/mcve", "sa", "");
+        connection = DriverManager.getConnection("jdbc:postgresql:mcve", "mcve", "mcve");
         ctx = DSL.using(connection);
     }
 
@@ -70,15 +71,93 @@ public class MCVETest {
     }
 
     @Test
-    public void mcveTest() {
-        TestRecord result =
-        ctx.insertInto(TEST)
-           .columns(TEST.VALUE)
-           .values(42)
-           .returning(TEST.ID)
-           .fetchOne();
+    public void insert() {
+        var result =
+            ctx.insertInto(TEST)
+                .columns(TEST.VALUE)
+                .values(TestEnum.values())
+                .returning(TEST.ID)
+                .fetchOne();
 
         result.refresh();
-        assertEquals(42, (int) result.getValue());
+        assertArrayEquals(TestEnum.values(), result.getValue());
+    }
+
+    @Test
+    public void insertWorkaround() {
+        var result =
+            ctx.insertInto(TEST)
+                .columns(TEST.VALUE)
+                // Doesn't scale well…
+                .values(DSL.array(TestEnum.values()))
+                .returning(TEST.ID)
+                .fetchOne();
+
+        result.refresh();
+        assertArrayEquals(TestEnum.values(), result.getValue());
+    }
+
+
+    @Test
+    public void insertWorkaround2() {
+        var result =
+            ctx.insertInto(TEST)
+                .columns(TEST.VALUE)
+                .values(DSL.cast(DSL.val(Stream.of(TestEnum.values()).map(EnumType::getLiteral).toArray(), String[].class), TEST.VALUE))
+                .returning(TEST.ID)
+                .fetchOne();
+
+        result.refresh();
+        assertArrayEquals(TestEnum.values(), result.getValue());
+    }
+
+    @Test
+    public void update() {
+        ctx.deleteFrom(TEST).where(TEST.ID.eq(ID)).execute();
+        ctx.insertInto(TEST).columns(TEST.ID).values(ID).execute();
+
+        var result =
+            ctx.update(TEST)
+                .set(TEST.VALUE, TestEnum.values())
+                .where(TEST.ID.eq(ID))
+                .returning(TEST.ID)
+                .fetchOne();
+
+        result.refresh();
+        assertArrayEquals(TestEnum.values(), result.getValue());
+    }
+
+    @Test
+    public void updateWorkaround() {
+        ctx.deleteFrom(TEST).where(TEST.ID.eq(ID)).execute();
+        ctx.insertInto(TEST).columns(TEST.ID).values(ID).execute();
+
+        var result =
+            ctx.update(TEST)
+                // Doesn't scale well…
+                .set(TEST.VALUE, DSL.array(TestEnum.values()))
+                .where(TEST.ID.eq(ID))
+                .returning(TEST.ID)
+                .fetchOne();
+
+        result.refresh();
+        assertArrayEquals(TestEnum.values(), result.getValue());
+    }
+
+
+    @Test
+    public void updateWorkaround2() {
+        ctx.deleteFrom(TEST).where(TEST.ID.eq(ID)).execute();
+        ctx.insertInto(TEST).columns(TEST.ID).values(ID).execute();
+
+        var result =
+            ctx.update(TEST)
+                .set(TEST.VALUE, DSL.cast(DSL.val(Stream.of(TestEnum.values()).map(EnumType::getLiteral).toArray(), String[].class), TEST.VALUE))
+                .where(TEST.ID.eq(ID))
+                .returning(TEST.ID)
+                .fetchOne();
+
+        result.refresh();
+        assertArrayEquals(TestEnum.values(), result.getValue());
     }
 }
