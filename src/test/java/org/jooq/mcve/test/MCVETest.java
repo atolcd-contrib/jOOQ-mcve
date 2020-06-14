@@ -37,16 +37,16 @@
  */
 package org.jooq.mcve.test;
 
+import static org.jooq.impl.DSL.cast;
 import static org.jooq.mcve.Tables.TEST;
-import static org.junit.Assert.assertEquals;
+import static org.jooq.util.postgres.PostgresDSL.arrayOverlap;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-
 import org.jooq.DSLContext;
+import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
-import org.jooq.mcve.tables.records.TestRecord;
-
+import org.jooq.mcve.enums.AccessRight;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,7 +58,7 @@ public class MCVETest {
 
     @Before
     public void setup() throws Exception {
-        connection = DriverManager.getConnection("jdbc:h2:~/mcve", "sa", "");
+        connection = DriverManager.getConnection("jdbc:postgresql:somedb", "someuser", "mcve");
         ctx = DSL.using(connection);
     }
 
@@ -70,15 +70,73 @@ public class MCVETest {
     }
 
     @Test
-    public void mcveTest() {
-        TestRecord result =
-        ctx.insertInto(TEST)
-           .columns(TEST.VALUE)
-           .values(42)
-           .returning(TEST.ID)
-           .fetchOne();
+    public void enumArrayNoCast() {
+        ctx.selectFrom(TEST)
+            .where(arrayOverlap(TEST.ACCESS_RIGHTS, new AccessRight[]{AccessRight.administrator}))
+            .fetch();
+    }
 
-        result.refresh();
-        assertEquals(42, (int) result.getValue());
+    @Test
+    public void enumArrayWithCast() {
+        ctx.selectFrom(TEST)
+            .where(arrayOverlap(TEST.ACCESS_RIGHTS, cast(new AccessRight[]{AccessRight.administrator}, TEST.ACCESS_RIGHTS)))
+            .fetch();
+        // Will fail with
+        //   ERROR: type "access_right[]" does not exist(..)
+        // because it generates
+        //   cast(?::"mcve"."access_right"[] as access_right[])
+        // the second access_right should be qualified
+    }
+
+    @Test(expected = DataAccessException.class)
+    public void domainArrayNoCast() {
+        ctx.selectFrom(TEST)
+            .where(arrayOverlap(TEST.EXTERNAL_IDS, new String[]{"foo"}))
+            .fetch();
+        // Will fail with
+        //   ERROR: operator does not exist: mcve.external_id[] && character varying[](..)
+        // because it generates
+        //   ?::varchar[]
+        // This is an expected failure.
+    }
+
+    @Test
+    public void domainArrayWithCast() {
+        ctx.selectFrom(TEST)
+            .where(arrayOverlap(TEST.EXTERNAL_IDS, cast(new String[]{"foo"}, TEST.EXTERNAL_IDS)))
+            .fetch();
+    }
+
+    @Test
+    public void enumNoCast() {
+        ctx.selectFrom(TEST)
+            .where(TEST.ACCESS_RIGHT.eq(AccessRight.administrator))
+            .fetch();
+    }
+
+    @Test
+    public void enumWithCast() {
+        ctx.selectFrom(TEST)
+            .where(TEST.ACCESS_RIGHT.eq(cast(AccessRight.administrator, TEST.ACCESS_RIGHT)))
+            .fetch();
+        // Will fail with
+        //   ERROR: type "access_right" does not exist(..)
+        // because it generates
+        //   cast(?::"mcve"."access_right" as access_right)
+        // the second access_right should be qualified
+    }
+
+    @Test
+    public void domainNoCast() {
+        ctx.selectFrom(TEST)
+            .where(TEST.EXTERNAL_ID.eq("foo"))
+            .fetch();
+    }
+
+    @Test
+    public void domainWithCast() {
+        ctx.selectFrom(TEST)
+            .where(TEST.EXTERNAL_ID.eq(cast("foo", TEST.EXTERNAL_ID)))
+            .fetch();
     }
 }
